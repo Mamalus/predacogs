@@ -1,6 +1,8 @@
 import discord
 
-from redbot.core import checks, commands
+import random
+
+from redbot.core import checks, commands, Config
 
 from .core import Functions
 from . import subs
@@ -10,7 +12,26 @@ class Nsfw(Functions, commands.Cog):
     """Send random NSFW images from random subreddits"""
 
     __author__ = ["Predä", "aikaterna"]
-    __version__ = "1.9.2"
+    __version__ = "2.0b"
+
+    @checks.mod_or_permissions(manage_messages=True)
+    @commands.bot_has_permissions(embed_links=True)
+    @commands.cooldown(1, 0.5, commands.BucketType.user)
+    @commands.command()
+    async def autoporn(self, ctx, channel: discord.TextChannel = None):
+        """
+            Send random nsfw/porn images/gifs from random subreddits.
+
+            Can be set only by a moderator.
+        """
+        # Add something for still works after a restart
+        await self._autoporn_channel(ctx, channel=channel)
+        try:
+            await self._maybe_send_autoporn(
+                ctx, "random nsfw", guild=ctx.guild, sub=subs.AUTOPORN, subr=None
+            )
+        except:
+            return await self.config.guild(ctx.guild).clear()
 
     @commands.bot_has_permissions(embed_links=True)
     @commands.cooldown(1, 0.5, commands.BucketType.user)

@@ -1,8 +1,11 @@
 import discord
 
 import aiohttp
+import asyncio
 import random
 import json
+
+from redbot.core import commands, Config
 
 from .subs import EMOJIS
 from . import subs
@@ -13,11 +16,39 @@ ENDPOINT = "/random"
 IMGUR_LINKS = "http://imgur.com", "https://m.imgur.com", "https://imgur.com"
 GOOD_EXTENSIONS = ".png", ".jpg", ".jpeg", ".gif"
 
-
 class Functions:
     def __init__(self, bot):
         self.bot = bot
+        self.ctx = commands.Context
+        self.config = Config.get_conf(self, 3329804706503720962, force_registration=True)
+        default_guild = {"channel_id": None, "enabled": False}
+        self.config.register_guild(**default_guild)
         self.session = aiohttp.ClientSession()
+
+    async def _autoporn_channel(self, ctx, channel=None):
+        enabled = await self.config.guild(ctx.guild).enabled()
+        if not enabled:
+            if channel is None:
+                channel = ctx.message.channel
+            if channel.is_nsfw() == True:
+                await self.config.guild(ctx.guild).channel_id.set(channel.id)
+                await self.config.guild(ctx.guild).enabled.set(True)
+                await ctx.send(f"Autoporn enabled in : <#{channel.id}>.")
+            else:
+                return await ctx.send("Autoporn can be enabled only in NSFW channels.")
+        elif enabled and channel:
+            if channel.is_nsfw() == True:
+                await self.config.guild(ctx.guild).channel_id.set(channel.id)
+                await self.config.guild(ctx.guild).enabled.set(True)
+                await ctx.send(f"Autoporn channel changed to : <#{channel.id}>.")
+            else:
+                return await ctx.send("Autoporn can be enabled only in NSFW channels.")
+        else:
+            await self.config.guild(ctx.guild).channel_id.set(None)
+            await self.config.guild(ctx.guild).enabled.set(False)
+            await ctx.send(
+                f"Autoporn disabled. Use `{ctx.prefix}autoporn` command again to get back autoporn."
+            )
 
     # TODO: Use something different for getting images, like caching.
     # Or maybe not ? Works well now without ctx.invoke.
@@ -112,6 +143,26 @@ class Functions:
                 )
             return await ctx.send(embed=em)
 
+    async def _make_embed_autoporn(self, ctx, subr, name, url):
+        emoji = await self._emojis(emoji=None)
+        em = discord.Embed(
+            color=0x891193,
+            title="Here is {name} image ... \N{EYES}".format(name=name),
+            description="[**Link if you don't see image**]({url})".format(url=url),
+        )
+        em.set_footer(
+            text="From r/{r} {emoji}".format(
+                r=subr, emoji=emoji
+            )
+        )
+        if url.endswith(GOOD_EXTENSIONS):
+            em.set_image(url=url)
+        if url.startswith("https://gfycat.com"):
+            em = "Here is {name} gif ... \N{EYES}\nFrom **r/{r}** {emoji}\n{url}".format(
+                name=name, r=subr, emoji=emoji, url=url
+            )
+        return em
+
     async def _maybe_embed(self, ctx, embed):
         if type(embed) == discord.Embed:
             await ctx.send(embed=embed)
@@ -130,6 +181,24 @@ class Functions:
                 url, subr = await self._get_imgs(ctx, sub=sub, url=None, subr=None)
                 embed = await self._make_embed(ctx, subr, name, url)
         await self._maybe_embed(ctx, embed=embed)
+
+    async def _maybe_send_autoporn(self, ctx, name, guild=None, sub=None, subr=None):
+        # await self.bot.wait_until_ready()
+        # while self == self.bot.get_cog("Nsfw"):
+        while True:
+            enabled = await self.config.guild(guild).enabled()
+            if enabled == True:
+                async with ctx.typing():
+                    url, subr = await self._get_imgs(ctx, sub=sub, url=None, subr=None)
+                    embed = await self._make_embed_autoporn(ctx, subr, name, url)
+                try:
+                    await self._maybe_embed(ctx, embed=embed)
+                    await asyncio.sleep(random.randint(5, 10)) # Low ints for tests.
+                except:
+                    break
+            else:
+                break
+
 
     def __unload(self):
         self.bot.loop.create_task(self.session.close())
