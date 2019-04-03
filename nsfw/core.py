@@ -16,7 +16,7 @@ ENDPOINT = "/random"
 IMGUR_LINKS = "http://imgur.com", "https://m.imgur.com", "https://imgur.com"
 GOOD_EXTENSIONS = ".png", ".jpg", ".jpeg", ".gif"
 
-class Functions:
+class Core:
     def __init__(self, bot):
         self.bot = bot
         self.ctx = commands.Context
@@ -90,18 +90,17 @@ class Functions:
 
     async def _make_embed(self, ctx, subr, name, url):
         emoji = await self._emojis(emoji=None)
-        em = discord.Embed(
-            color=0x891193,
-            title="Here is {name} image ... \N{EYES}".format(name=name),
-            description="[**Link if you don't see image**]({url})".format(url=url),
-        )
-        em.set_footer(
-            text="Requested by {req} {emoji} • From r/{r}".format(
-                req=ctx.author.display_name, emoji=emoji, r=subr
-            )
-        )
         if url.endswith(GOOD_EXTENSIONS):
-            em.set_image(url=url)
+            em = await self._embed(
+                ctx,
+                color=0x891193,
+                title="Here is {name} image ... \N{EYES}".format(name=name),
+                description="[**Link if you don't see image**]({url})".format(url=url),
+                image=url,
+                text="Requested by {req} {emoji} • From r/{r}".format(
+                    req=ctx.author.display_name, emoji=emoji, r=subr
+                ),
+            )
         if url.startswith("https://gfycat.com"):
             em = "Here is {name} gif ... \N{EYES}\n\nRequested by **{req}** {emoji} • From **r/{r}**\n{url}".format(
                 name=name, req=ctx.author.display_name, emoji=emoji, r=subr, url=url
@@ -114,49 +113,37 @@ class Functions:
             data = await i.json(content_type=None)
             url = data["message"]
             emoji = await self._emojis(emoji=None)
-            if ctx.guild:
-                if ctx.message.channel.is_nsfw() == True:
-                    em = discord.Embed(
-                        color=0x891193,
-                        title="Here is {name} image ... \N{EYES}".format(name=name),
-                        description="[**Link if you don't see image**]({url})".format(url=url),
-                    )
-                    em.set_image(url=url)
-                    em.set_footer(
-                        text="Requested by {req} {emoji} • From Nekobot API".format(
-                            req=ctx.author.display_name, emoji=emoji
-                        )
-                    )
+            embed = await self._embed(
+                ctx,
+                color=0x891193,
+                title="Here is {name} image ... \N{EYES}".format(name=name),
+                description="[**Link if you don't see image**]({url})".format(url=url),
+                image=url,
+                text="Requested by {req} {emoji} • From Nekobot API".format(
+                    req=ctx.author.display_name, emoji=emoji
+                ),
+            )
+            async with ctx.typing():  # TODO: Shorten this.
+                if ctx.guild:
+                    if ctx.message.channel.is_nsfw():
+                        em = embed
+                    else:
+                        em = await self._nsfw_channel_check(ctx)
                 else:
-                    em = await self._nsfw_channel_check(ctx)
-            else:
-                em = discord.Embed(
-                    color=0x891193,
-                    title="Here is {name} image ... \N{EYES}".format(name=name),
-                    description="[**Link if you don't see image**]({url})".format(url=url),
-                )
-                em.set_image(url=url)
-                em.set_footer(
-                    text="Requested by {req} {emoji} • From Nekobot API".format(
-                        req=ctx.author.display_name, emoji=emoji
-                    )
-                )
+                    em = embed
             return await ctx.send(embed=em)
 
     async def _make_embed_autoporn(self, ctx, subr, name, url):
         emoji = await self._emojis(emoji=None)
-        em = discord.Embed(
-            color=0x891193,
-            title="Here is {name} image ... \N{EYES}".format(name=name),
-            description="[**Link if you don't see image**]({url})".format(url=url),
-        )
-        em.set_footer(
-            text="From r/{r} {emoji}".format(
-                r=subr, emoji=emoji
-            )
-        )
         if url.endswith(GOOD_EXTENSIONS):
-            em.set_image(url=url)
+            em = await self._embed(
+                ctx,
+                color=0x891193,
+                title="Here is {name} image ... \N{EYES}".format(name=name),
+                description="[**Link if you don't see image**]({url})".format(url=url),
+                image=url,
+                text="From r/{r} {emoji}".format(r=subr, emoji=emoji)
+            )
         if url.startswith("https://gfycat.com"):
             em = "Here is {name} gif ... \N{EYES}\nFrom **r/{r}** {emoji}\n{url}".format(
                 name=name, r=subr, emoji=emoji, url=url
@@ -170,9 +157,9 @@ class Functions:
             await ctx.send(embed)
 
     async def _send_msg(self, ctx, name, sub=None, subr=None):
-        async with ctx.typing():
+        async with ctx.typing():  # TODO: Shorten this.
             if ctx.guild:
-                if ctx.message.channel.is_nsfw() == True:
+                if ctx.message.channel.is_nsfw():
                     url, subr = await self._get_imgs(ctx, sub=sub, url=None, subr=None)
                     embed = await self._make_embed(ctx, subr, name, url)
                 else:
@@ -198,6 +185,13 @@ class Functions:
                     break
             else:
                 break
+
+    @staticmethod
+    async def _embed(ctx, color=None, title=None, description=None, image=None, text=None):
+        em = discord.Embed(color=color, title=title, description=description)
+        em.set_image(url=image)
+        em.set_footer(text=text)
+        return em
 
 
     def __unload(self):
