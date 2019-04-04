@@ -66,9 +66,9 @@ class Core:
                 url, subr, text = await self._get_imgs(ctx, sub=sub, url=url)
             if url.startswith(IMGUR_LINKS):
                 url = url + ".png"
-            if url.endswith(".mp4"):
+            elif url.endswith(".mp4"):
                 url = url[:-3] + "gif"
-            if url.endswith(".gifv"):
+            elif url.endswith(".gifv"):
                 url = url[:-1]
             if (
                 text
