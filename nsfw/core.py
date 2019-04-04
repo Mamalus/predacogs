@@ -70,7 +70,7 @@ class Core:
                 url = url[:-3] + "gif"
             elif url.endswith(".gifv"):
                 url = url[:-1]
-            if (
+            elif (
                 text
                 or not url.endswith(GOOD_EXTENSIONS)
                 and not url.startswith("https://gfycat.com")
@@ -79,7 +79,7 @@ class Core:
         return url, subr
 
     async def _nsfw_channel_check(self, ctx, embed=None):
-        if ctx.message.channel.is_nsfw() == False:
+        if not ctx.message.channel.is_nsfw():
             embed = discord.Embed(
                 title="\N{LOCK} You can't use that command in a non-NSFW channel !", color=0xAA0000
             )
@@ -125,7 +125,7 @@ class Core:
                 ),
             )
             async with ctx.typing():
-                if ctx.message.channel.is_nsfw():
+                if not ctx.guild or ctx.message.channel.is_nsfw():
                     embed = embed
             return await self._maybe_embed(
                 ctx,
@@ -160,7 +160,7 @@ class Core:
 
     async def _send_msg(self, ctx, name, sub=None, subr=None):
         async with ctx.typing():
-            if ctx.message.channel.is_nsfw():
+            if not ctx.guild or ctx.message.channel.is_nsfw():
                 embed = await self._make_embed(ctx, sub, subr, name, url=None)
         return await self._maybe_embed(
             ctx,
