@@ -10,16 +10,17 @@ _ = Translator("Nsfw", __file__)
 
 def nsfwcheck():
     async def predicate(ctx):
-        if ctx.invoked_with == "help":
+        nsfw_channel = ctx.message.channel.is_nsfw()
+        if ctx.invoked_with == "help" and not nsfw_channel:
             return
-        res = True if ctx.message.channel.is_nsfw() else False
-        if not ctx.message.channel.is_nsfw():
+        check = True if nsfw_channel else False
+        if not nsfw_channel:
             embed = discord.Embed(
                 title="\N{LOCK} " + _("You can't use that command in a non-NSFW channel !"),
                 color=0xAA0000,
             )
             await ctx.send(embed=embed)
-        return res
+        return check
     return commands.check(predicate)
 
 
