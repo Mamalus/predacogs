@@ -49,6 +49,7 @@ class Core:
                         and not url.startswith("https://gfycat.com")
                     ):
                         url, subr = await self._get_imgs(ctx, sub=sub, url=url, subr=subr)
+                    print(url)
                     return url, subr
                 else:
                     return None, None
@@ -61,6 +62,7 @@ class Core:
                 if others.status == 200:
                     data = await others.json(content_type=None)
                     url = data["message"]
+                    print(url)
                     return url
                 else:
                     return None
@@ -141,27 +143,13 @@ class Core:
         async with ctx.typing():
             if not ctx.guild or ctx.message.channel.is_nsfw():
                 embed = await self._make_embed(ctx, sub, subr, name, url=None)
-        return await self._maybe_embed(
-            ctx,
-            embed=(
-                await self._nsfw_channel_check(ctx)
-                if (hasattr(ctx.channel, "is_nsfw") and (not (ctx.channel.is_nsfw())))
-                else embed
-            ),
-        )
+        return await self._maybe_embed(ctx, embed=embed)
 
     async def _send_msg_others(self, ctx, name, api_category=None):
         async with ctx.typing():
             if not ctx.guild or ctx.message.channel.is_nsfw():
                 embed = await self._make_embed_others(ctx, name, api_category)
-        return await self._maybe_embed(
-            ctx,
-            embed=(
-                await self._nsfw_channel_check(ctx)
-                if (hasattr(ctx.channel, "is_nsfw") and (not (ctx.channel.is_nsfw())))
-                else embed
-            ),
-        )
+        return await self._maybe_embed(ctx, embed=embed)
 
     @staticmethod
     async def _embed(ctx, color=None, title=None, description=None, image=None, text=None):
