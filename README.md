@@ -33,7 +33,7 @@
 - [p]load <installed_cog>
 ```
 
-Now that Red 3.1 is released, I have a 3.1 branch for this repo [here](https://github.com/PredaaA/predacogs/tree/3.1).
+Note: This branch is for Red 3.0 instances.
 
 ## Cogs
 
