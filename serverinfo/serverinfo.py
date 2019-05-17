@@ -25,8 +25,8 @@ class ServerInfo(commands.Cog):
         if _old_serverinfo:
             try:
                 self.bot.remove_command("serverinfo")
-            except:
-                pass
+            except Exception as error:
+                print(error)
             self.bot.add_command(_old_serverinfo)
 
     @commands.command()
