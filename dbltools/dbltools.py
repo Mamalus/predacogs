@@ -18,7 +18,7 @@ class DblTools(commands.Cog):
     """Tools to get bots information from discordbots.org."""
 
     __author__ = "Predä"
-    __version__ = "1.0.3"
+    __version__ = "1.1.0_red3.0"
 
     def __init__(self, bot):
         defaut = {"dbl_key": None}
@@ -161,6 +161,10 @@ class DblTools(commands.Cog):
                             else "0\n\n"
                         )
                     ),
+                    "approval_date": (
+                        bold(_("Approval date:"))
+                        + " {}\n\n".format(info["date"].replace("T", " ")[:-5])
+                    ),
                     "dbl_page": (
                         _("[DBL Page]({})").format(f"https://discordbots.org/bot/{bot.id}")
                     ),
@@ -190,6 +194,7 @@ class DblTools(commands.Cog):
                     "{servs}{shards}"
                     "{m_votes}"
                     "{t_votes}"
+                    "{approval_date}"
                     "{dbl_page}{if_inv}{if_supp}{if_gh}{if_wsite}"
                 ).format(**format_kwargs)
                 em = discord.Embed(color=(await ctx.embed_colour()), description=description)
