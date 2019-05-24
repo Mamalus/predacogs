@@ -4,7 +4,7 @@ from redbot.core import checks, commands, Config
 from redbot.core.i18n import Translator, cog_i18n
 from redbot.core.utils.chat_formatting import bold, box, inline
 
-from typing import Union
+from typing import Optional, Union
 
 import aiohttp
 
@@ -18,7 +18,7 @@ class DblTools(commands.Cog):
     """Tools to get bots information from discordbots.org."""
 
     __author__ = "Predä"
-    __version__ = "1.1.0_red3.0"
+    __version__ = "1.2.0_red3.0"
 
     def __init__(self, bot):
         defaut = {"dbl_key": None}
@@ -27,32 +27,24 @@ class DblTools(commands.Cog):
         self.config = Config.get_conf(self, 3329804706503720961, force_registration=True)
         self.config.register_global(**defaut)
 
-    async def _get_info(self, ctx, bot=None, info=None, stats=None):
-        """Get info from discordbots.org."""
+    async def _get_data(self, ctx, bot=None, endpoint: Optional[str] = ""):
+        """Get data from discordbots.org."""
         key = await self.config.dbl_key()
         headers = {"Authorization": key}
-        async with self.session.get(DBL_BASE_URL + str(bot), headers=headers) as resp:
+        async with self.session.get(DBL_BASE_URL + str(bot) + endpoint, headers=headers) as resp:
             if resp.status == 401:
-                await ctx.send(
-                    _("This API key looks wrong, try to set it again.")
-                )
+                await ctx.send(_("This API key looks wrong, try to set it again."))
                 return None
             elif resp.status == 404:
-                await ctx.send(
-                    _("This bot doesn't seem to be validated on Discord Bot List.")
-                )
+                await ctx.send(_("This bot doesn't seem to be validated on Discord Bot List."))
                 return None
             elif resp.status != 200:
                 await ctx.send(
                     "Error when trying to get DBL API. Error code: {}".format(inline(resp.status))
                 )
                 return None
-            info = await resp.json(content_type=None)
-        async with self.session.get(DBL_BASE_URL + str(bot) + "/stats", headers=headers) as resp:
-            if resp.status != 200:
-                return None
-            stats = await resp.json(content_type=None)
-        return info, stats
+            data = await resp.json(content_type=None)
+        return data
 
     @checks.is_owner()
     @commands.group()
@@ -80,7 +72,6 @@ class DblTools(commands.Cog):
             await ctx.send(_("API key set."))
 
     @commands.command()
-    @commands.guild_only()
     @commands.bot_has_permissions(embed_links=True)
     @commands.cooldown(1, 1, commands.BucketType.user)
     async def dblinfo(self, ctx, *, bot: Union[int, discord.Member, discord.User, None] = None):
@@ -102,7 +93,8 @@ class DblTools(commands.Cog):
         try:
             async with ctx.typing():
                 try:
-                    info, stats = await self._get_info(ctx, bot=bot.id, info=None, stats=None)
+                    info = await self._get_data(ctx, bot=bot.id)
+                    stats = await self._get_data(ctx, endpoint="/stats", bot=bot.id)
                 except TypeError:
                     return
 
@@ -155,11 +147,7 @@ class DblTools(commands.Cog):
                     ),
                     "t_votes": (
                         bold(_("Total votes:"))
-                        + (
-                            " {:,}\n".format(info["points"])
-                            if info.get("points", "")
-                            else "0\n"
-                        )
+                        + (" {:,}\n".format(info["points"]) if info.get("points", "") else "0\n")
                     ),
                     "approval_date": (
                         bold(_("Approval date:"))
@@ -209,6 +197,34 @@ class DblTools(commands.Cog):
                 _("It doesn't seem to be a valid ID. Try again or check if the ID is right.\n")
                 + inline(str(error))
             )
+
+    @commands.command()
+    @commands.bot_has_permissions(embed_links=True)
+    @commands.cooldown(1, 1, commands.BucketType.user)
+    async def dblwidget(self, ctx, *, bot: Union[int, discord.Member, discord.User, None] = None):
+        """Send the widget of a chosen bot on DBL."""
+        if await self.config.dbl_key() is None:
+            return await ctx.send(_("Owner of this bot need to set an API key first !"))
+        if bot is None:
+            return await ctx.send_help()
+        if type(bot) == int:
+            try:
+                bot = await self.bot.get_user_info(bot)
+            except discord.errors.NotFound:
+                return await ctx.send(str(bot) + _(" is not a Discord user."))
+
+        async with ctx.typing():
+            data = await self._get_data(ctx, bot=bot.id)
+            if data is None:
+                return
+            em = discord.Embed(
+                color=discord.Color.blurple(),
+                description=bold(_("[DBL Page]({})")).format(
+                    f"https://discordbots.org/bot/{bot.id}"
+                ),
+            )
+            em.set_image(url=f"https://discordbots.org/api/widget/{bot.id}.png")
+        await ctx.send(embed=em)
 
     def __unload(self):
         self.bot.loop.create_task(self.session.close())
